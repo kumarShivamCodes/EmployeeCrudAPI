@@ -1,5 +1,6 @@
 package com.nexttuple.employee.controller;
 
+import com.nexttuple.employee.exception.ResourceNotFoundException;
 import com.nexttuple.employee.model.Employee;
 import com.nexttuple.employee.service.EmployeeService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,22 +20,30 @@ public class EmployeeController {
     private EmployeeService employeeService;
 
     @GetMapping
-    public List<Employee> getAllEmployees()
+    public ResponseEntity<List<Employee> > getAllEmployees()
     {
-        return employeeService.getAllEmployee();
+        List<Employee> employees=employeeService.getAllEmployee();
+        if(employees.isEmpty())
+        {
+
+            throw new ResourceNotFoundException("No employees found.", "There are no employees in the system.");
+        }
+        else {
+            return new ResponseEntity<>(employees, HttpStatus.OK);
+        }
     }
     @GetMapping("/{id}")
     public ResponseEntity<Employee> getEmployeeId(@PathVariable Long id)
     {
-        Optional<Employee> employee =employeeService.getEmployeeId(id);
-        return employee.map(value-> new ResponseEntity<>(value, HttpStatus.OK))
-                .orElseGet(()-> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+        Optional<Employee> employee = employeeService.getEmployeeId(id);
+        return employee.map(value -> new ResponseEntity<>(value, HttpStatus.OK))
+                .orElseThrow(() -> new ResourceNotFoundException("No employee found.", "There are no employees with the given ID."));
     }
 
     @PostMapping
-    public Employee createEmployee(@RequestBody Employee employee)
-    {
-        return employeeService.createEmployee(employee);
+    public ResponseEntity<Employee> createEmployee(@RequestBody Employee employee)
+    {   Employee newEmployee=employeeService.createEmployee(employee);
+        return new ResponseEntity<>(newEmployee,HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
@@ -47,9 +56,10 @@ public class EmployeeController {
         }
         else
         {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            throw new ResourceNotFoundException("No employees found.", "There are no employees in the system.");
         }
     }
+
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteEmployee(@PathVariable Long id)
@@ -61,7 +71,13 @@ public class EmployeeController {
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         }
         else
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            throw new ResourceNotFoundException("No employees found.", "There are no employees in the system.");
 
+
+    }
+
+    @RequestMapping(value = "/**")
+    public ResponseEntity<Void> handleInvalidRequest() {
+        throw new ResourceNotFoundException("Invalid request.", "The requested URL is not valid.");
     }
 }
